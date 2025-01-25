@@ -28,3 +28,21 @@ bedrockDataSource.grantPrincipal.addToPrincipalPolicy(
     
   })
 );
+
+const localDataSource = backend.data.resources.graphqlApi.addHttpDataSource(
+  "localDS",
+  "http://localhost:8000",
+  {
+    authorizationConfig: {
+      signingRegion: "us-east-1",
+      signingServiceName: "local",
+    },
+  }
+);
+
+localDataSource.grantPrincipal.addToPrincipalPolicy(
+  new PolicyStatement({
+    resources: ["*"],
+    actions: ["*"],
+  })
+);
