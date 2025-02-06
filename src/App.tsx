@@ -7,8 +7,22 @@ import { Schema } from "../amplify/data/resource";
 import { generateClient } from "aws-amplify/data";
 import outputs from "../amplify_outputs.json";
 
-
 import "@aws-amplify/ui-react/styles.css";
+
+// Load environment variables
+const API_ENDPOINT = import.meta.env.VITE_REACT_APP_API_ENDPOINT || "";
+const NYC_TOKEN = import.meta.env.VITE_REACT_APP_NYC_TOKEN || "";
+
+if (!API_ENDPOINT) {
+  console.error("API_ENDPOINT is not set. Please check your environment variables.");
+}
+
+if (!NYC_TOKEN) {
+  console.error("NYC_TOKEN is not set. Please check your environment variables.");
+}
+
+console.log("API_ENDPOINT:", API_ENDPOINT); // Should log the correct API endpoint
+console.log("NYC_TOKEN:", NYC_TOKEN); // Should log the correct NYC token
 
 Amplify.configure({
   ...outputs,
@@ -16,7 +30,7 @@ Amplify.configure({
     endpoints: [
       {
         name: "yourAPIName",
-        endpoint: "http://localhost:8000",
+        endpoint: API_ENDPOINT, // Use environment variable
       },
     ],
   },
@@ -31,6 +45,34 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const pollQueryStatus = async (queryId: string) => {
+    try {
+      const response = await fetch(`${API_ENDPOINT}/get_query/${queryId}`, {
+        method: 'GET',
+        headers: {
+          'accept': 'application/json',
+        },
+      });
+
+      const resultData = await response.json();
+
+      if (response.ok) {
+        if (resultData.is_complete) {
+          setResult(resultData?.answer_text || "No data returned");
+          setLoading(false);
+        } else {
+          setTimeout(() => pollQueryStatus(queryId), 2000); // Poll every 2 seconds
+        }
+      } else {
+        setError(resultData?.error || "An error occurred");
+        setLoading(false);
+      }
+    } catch (e) {
+      setError(`An error occurred: ${e}`);
+      setLoading(false);
+    }
+  };
+
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
@@ -40,10 +82,11 @@ function App() {
       const formData = new FormData(event.currentTarget);
       const queryText = formData.get("ingredients")?.toString() || "";
 
-      const response = await fetch('http://127.0.0.1:8000/submit_query', {
+      const response = await fetch(`${API_ENDPOINT}/submit_query`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${NYC_TOKEN}`, // Use token for authorization
         },
         body: JSON.stringify({ query_text: queryText }),
       });
@@ -51,14 +94,15 @@ function App() {
       const resultData = await response.json();
 
       if (response.ok) {
-        setResult(resultData?.answer_text || "No data returned");
+        const queryId = resultData.query_id;
+        pollQueryStatus(queryId);
       } else {
         setError(resultData?.error || "An error occurred");
+        setLoading(false);
       }
 
     } catch (e) {
       setError(`An error occurred: ${e}`);
-    } finally {
       setLoading(false);
     }
   };
