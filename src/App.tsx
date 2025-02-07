@@ -21,6 +21,7 @@ if (!NYC_TOKEN) {
   console.error("NYC_TOKEN is not set. Please check your environment variables.");
 }
 
+
 console.log("API_ENDPOINT:", API_ENDPOINT); // Should log the correct API endpoint
 console.log("NYC_TOKEN:", NYC_TOKEN); // Should log the correct NYC token
 
